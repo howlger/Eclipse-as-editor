@@ -1,0 +1,11 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: TextMate language pack
+Bundle-SymbolicName: de.agilantis.tm4e_languages;singleton:=true
+Bundle-Version: <<VERSION>>
+Bundle-Vendor: Holger Voormann
+Require-Bundle: org.eclipse.tm4e.registry;bundle-version="[0.1.0,2.0.0)",
+ org.eclipse.core.contenttype;bundle-version="[3.2.0,4.0.0)",
+ org.eclipse.ui.genericeditor;bundle-version="[1.0.0,2.0.0)",
+ org.eclipse.tm4e.ui;bundle-version="[0.1.0,2.0.0)",
+ org.eclipse.ui.editors;bundle-version="[3.3.0,4.0.0)"

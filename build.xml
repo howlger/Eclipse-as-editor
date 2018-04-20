@@ -1,0 +1,486 @@
+<!-- Copyright (c) 2018 Holger Voormann.
+Permission to copy, use, modify, sell and distribute this software is granted.
+This software is provided "as is" without express or implied warranty,
+and with no claim as to its suitability for any purpose. -->
+<project default="build-eclipse-as-editor"
+    name="Eclipse as Editor (for Windows)"
+    xmlns:if="ant:if" xmlns:unless="ant:unless">
+
+    <!-- application -->
+    <property name="app.name"         value="Eclipse as Editor"/>
+    <property name="app.subfolder"    value="eclipse-as-editor"/>
+    <property name="app.provider"     value="Holger Voormann"/>
+    <property name="app.context-menu" value="Open with Eclipse"/>
+
+    <!-- uncomment following line to not include a JRE -->
+    <property name="embed.jre" value="yes"/>
+
+    <!-- (not yet) reviewed, but may be useful, too:
+      http://marketplace.eclipse.org/content/jenkins-editor
+            https://dl.bintray.com/de-jcup/jenkinseditor
+            de.jcup.jenkinseditor.feature.feature.group
+            => unfortunately, requires JDT
+      http://marketplace.eclipse.org/content/overview-plugin-eclipse
+            http://cdn.rawgit.com/sandipchitale/sandipchitaleseclipseplugins/master/text.overview.updatesite
+            text.overview.feature.feature.group
+            => errors with Eclipse Photon
+      http://marketplace.eclipse.org/node/620873
+    -->
+
+    <property name="features" value="
+        http://download.eclipse.org/eclipse/updates/4.8-I-builds - org.eclipse.platform.ide # Eclipse Platform
+        http://download.eclipse.org/releases/oxygen # simultaneous release: Oxygen
+        http://download.eclipse.org/staging/photon  # simultaneous release: Photon
+        http://download.eclipse.org/releases/photon # simultaneous release: Photon preview
+        http://psnet.nu/eclipse/updates - nu.psnet.quickimage.feature.group     # image viewer
+        http://download.eclipse.org/tm4e/snapshots - org.eclipse.tm4e.ui.editor # Eclipse TM4E: generic editor with syntax higlighting via TextMate grammars
+        http://andrei.gmxhome.de/eclipse/ -  AnyEditTools.feature.group         # AnyEdit Tools: Compare with Clipboard, etc.
+        https://dl.bintray.com/de-jcup/batcheditor - de.jcup.batcheditor.feature.group
+        https://dl.bintray.com/de-jcup/basheditor - ...
+        http://javahexeditor.sourceforge.net/update
+        http://dadacoalition.org/yedit
+        https://resheim.net/p2/eclipse-timekeeper
+    "/>
+
+    <!-- see https://wiki.eclipse.org/Eclipse_Project_Update_Sites -->
+    <property name="repositories" value="
+        http://download.eclipse.org/eclipse/updates/4.8-I-builds
+        http://download.eclipse.org/releases/oxygen
+        http://download.eclipse.org/staging/photon
+        http://download.eclipse.org/releases/photon
+        http://psnet.nu/eclipse/updates
+        http://download.eclipse.org/tm4e/snapshots
+        http://andrei.gmxhome.de/eclipse/
+        https://dl.bintray.com/de-jcup/batcheditor
+        https://dl.bintray.com/de-jcup/basheditor
+        http://javahexeditor.sourceforge.net/update
+        http://dadacoalition.org/yedit
+        https://resheim.net/p2/eclipse-timekeeper
+        "/>
+
+    <!-- feature list: {iu} or {iu}/{version}, e. g. "org.eclipse.platform.ide"
+         or "org.eclipse.platform.ide/4.8.0.I20180412-2000" -->
+    <property name="install.units" value="
+        org.eclipse.platform.ide
+        org.eclipse.epp.mpc.feature.group
+        org.eclipse.tm4e.ui.editor
+        nu.psnet.quickimage.feature.group
+        AnyEditTools.feature.group
+        org.eclipse.mylyn.wikitext_feature.feature.group
+        de.jcup.batcheditor.feature.group
+        de.jcup.basheditor.feature.group
+        org.eclipse.wst.xml_ui.feature.feature.group
+        net.sourceforge.javahexeditor.feature.group
+        org.eclipse.wst.web_ui.feature.feature.group
+        de.agilantis.tm4e_languages.feature.feature.group
+        org.dadacoalition.yedit.feature.feature.group
+        org.eclipse.mylyn.ide_feature.feature.group
+        net.resheim.eclipse.timekeeper.feature.group
+        "/>
+
+  <!-- temp (working) and output directories -->
+    <property name="temp.dir" location="temp"/>
+    <property name="out.dir" location="out"/>
+
+    <!-- full build -->
+    <target name="build-eclipse-as-editor"
+            depends="init,
+                     get-openj9-jre,
+                     get-tm-languages,
+                     build,
+                     create-windows-installer"/>
+
+    <!-- download grammar files and create plug-in -->
+    <target name="get-tm-languages" depends="init">
+        <delete dir="${temp.dir}/tmLanguages"/>
+        <script language="javascript"><![CDATA[
+            var sizeInBytes = project.getProperty('current.time.millis');
+            project.setNewProperty('current.time.millis', java.lang.System.currentTimeMillis());
+        ]]></script>
+        <copy todir="${temp.dir}/tmLanguages">
+            <fileset dir="tmLanguages" includes="update_*/**, de.*/**"/>
+            <filterchain>
+                <replacestring from="&lt;&lt;TIMESTAMP>>" to="${current.time.millis}"/>
+                <replacestring from="&lt;&lt;VERSION>>" to="${version}"/>
+            </filterchain>
+        </copy>
+        <copy todir="${temp.dir}/tmLanguages/de.agilantis.tm4e_languages">
+            <fileset dir="tmLanguages/icons" includes="generic_editor*.png"/>
+        </copy>
+
+        <!-- grammar files: search for: "${langugage} tmLanguage", look at
+             https://github.com/textmate or
+             https://github.com/Microsoft/vscode/tree/master/extensions or
+             https://github.com/shpakovski/syntaxmate.tmbundle/tree/master/Syntaxes -->
+        <grammar href="https://github.com/textmate/groovy.tmbundle/blob/master/Syntaxes/Groovy.tmLanguage"/>
+        <grammar href="https://github.com/byplayer/sublime-text-2/blob/master/Packages/NSIS-master/NSIS.tmLanguage"/>
+        <grammar href="https://github.com/rsms/Go.tmbundle/blob/master/Syntaxes/Go.tmLanguage"/>
+        <grammar href="https://github.com/guillermooo/dart-sublime-bundle/blob/master/Dart.tmLanguage"/>
+        <grammar href="https://github.com/textmate/python.tmbundle/blob/master/Syntaxes/Python.tmLanguage"/>
+        <grammar href="https://github.com/textmate/swift.tmbundle/blob/master/Syntaxes/Swift.tmLanguage"/>
+
+        <!-- without icons -->
+        <grammar href="https://github.com/cj/sublime/blob/master/Java/Java.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/JavaProperties.tmLanguage"/>
+        <grammar href="https://github.com/textmate/ini.tmbundle/blob/master/Syntaxes/Ini.plist"/>
+        <grammar href="https://github.com/textmate/c.tmbundle/blob/master/Syntaxes/C.plist"/>
+        <grammar href="https://github.com/textmate/c.tmbundle/blob/master/Syntaxes/C%2B%2B.plist"/>
+        <grammar href="https://github.com/wintermi/csharp-tmbundle/blob/master/Syntaxes/C%23.tmLanguage"/>
+        <grammar href="https://github.com/dbp/sublime-rust/blob/master/Rust.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/CSV.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/ANTLR.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/Clojure.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/Lua.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/Mathematica.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/Perl.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/PowerShell.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/SQL.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/iCalendar.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/D.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/Haskell.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/ABAP.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/Ada.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/Eiffel.tmLanguage"/>
+
+        <!-- not yet tested (and without icons): -->
+
+        <!-- the following grammar files do not work for unknown reasons (maybe requires injection):
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/ASP%20VB.net.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/F%23.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/PHP.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/Mail.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/LESS.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/Doxygen.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/CoffeeScript.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/Apache.tmLanguage"/>
+        <grammar href="https://github.com/shpakovski/syntaxmate.tmbundle/blob/master/Syntaxes/LaTeX.tmLanguage"/>
+        <grammar href="https://github.com/aziz/Sublime-Text-Advanced-CSV/blob/master/AdvancedCSV.tmLanguage"/>
+        <grammar href="https://github.com/textmate/tabular.tmbundle/blob/master/Syntaxes/CSV.tmLanguage"/>
+        <grammar href="https://github.com/dotnet/csharp-tmLanguage/blob/master/grammars/csharp.tmLanguage"/>
+        <grammar href="https://github.com/textmate/fortran.tmbundle/blob/master/Syntaxes/Fortran%20-%20Modern.tmLanguage"/>
+        <grammar href="https://github.com/textmate/latex.tmbundle/blob/master/Syntaxes/LaTeX.plist"/>
+        <grammar href="https://github.com/bradrobertson/sublime-packages/blob/master/LaTeX/LaTeX.tmLanguage"/>
+        <grammar href="https://github.com/textmate/php.tmbundle/blob/master/Syntaxes/PHP.plist"/>
+        -->
+
+        <move file="${temp.dir}/tmLanguages/de.agilantis.tm4e_languages/plugin-template.xml"
+            tofile="${temp.dir}/tmLanguages/de.agilantis.tm4e_languages/plugin.xml">
+            <filterchain>
+                <replaceregex flags="g" byline="no"
+                    pattern="\s*+(&lt;/plugin>)"
+                    replace="${line.separator}${line.separator}\1"/>
+                <replaceregex flags="g" byline="no"
+                    pattern="\s*+(&lt;!-[-])"
+                    replace="${line.separator}${line.separator}   \1"/>
+                <replaceregex flags="g" byline="no"
+                    pattern="\s*+(&lt;[/]?extension)"
+                    replace="${line.separator}   \1"/>
+                <replaceregex flags="g" byline="no"
+                    pattern="\s*+(&lt;[/]?(?:grammar|scopeNameContentTypeBinding|content-type|presentationReconciler|editor|contentTypeBinding))"
+                    replace="${line.separator}      \1"/>
+                <replaceregex flags="g" byline="no"
+                    pattern="\s*+(contentTypeId|base-type|file-extensions|file-names|id|name|priority|class|contentType|icon|contributorClass|default|extensions)="
+                    replace="${line.separator}         \1="/>
+            </filterchain>
+        </move>
+      <loadfile property="tmLanguages.desc"
+        srcfile="${temp.dir}/tmLanguages/description.txt">
+        <filterchain><replaceregex pattern="^, " replace=""/></filterchain>
+      </loadfile>
+      <loadfile property="tmLanguages.license"
+        srcfile="${temp.dir}/tmLanguages/license.txt"/>
+      <replace>
+        <fileset dir="${temp.dir}/tmLanguages"
+          includes="**/content.xml, **/feature.xml"/>
+        <replacefilter token="&lt;&lt;DESCRIPTION>>" value="Eclipse TM4E (http://eclipse.org/tm4e) definition for following languages (file extensions): ${tmLanguages.desc}"/>
+        <replacefilter token="&lt;&lt;LICENSE>>" value="See licenses for the individual grammar files on their web pages: ${tmLanguages.license}"/>
+        </replace>
+
+        <!-- create update site -->
+        <zip destfile="${temp.dir}/tmLanguages/update_site/plugins/de.agilantis.tm4e_languages_${version}.jar">
+            <fileset dir="${temp.dir}/tmLanguages/de.agilantis.tm4e_languages"/>
+        </zip>
+        <zip destfile="${temp.dir}/tmLanguages/update_site/features/de.agilantis.tm4e_languages.feature_${version}.jar">
+            <fileset dir="${temp.dir}/tmLanguages/de.agilantis.tm4e_languages.feature"/>
+        </zip>
+
+    </target>
+    <macrodef name="grammar">
+        <attribute name="href"/>
+        <sequential>
+            <local name="raw.href"/>
+            <loadresource property="raw.href">
+                <string value="@{href}"/>
+                <filterchain>
+                    <tokenfilter>
+                        <replaceregex pattern="^(\w++://)github(.com/.*)/blob(/.*)$$"
+                                      replace="\1raw.githubusercontent\2\3"/>
+                    </tokenfilter>
+                </filterchain>
+            </loadresource>
+            <delete dir="${temp.dir}/tmLanguages/grammar"/>
+            <mkdir dir="${temp.dir}/tmLanguages/grammar"/>
+            <local name="grammar.file"/>
+            <basename property="grammar.file" file="@{href}"/>
+            <get src="${raw.href}" dest="${temp.dir}/tmLanguages/grammar/${grammar.file}"/>
+            <xslt style="tmLanguages/grammar-to-properties.xsl"
+                in="${temp.dir}/tmLanguages/grammar/${grammar.file}"
+                out="${temp.dir}/tmLanguages/grammar/grammar.properties"/>
+            <local name="grammar.name"/>
+            <local name="grammar.id"/>
+            <local name="grammar.extensions"/>
+            <local name="grammar.extensions.label"/>
+            <local name="grammar.icon"/>
+            <loadproperties srcfile="${temp.dir}/tmLanguages/grammar/grammar.properties" prefix="grammar"/>
+            <echo level="info" message="Adding grammar: '${grammar.name}' (${href})..."/>
+            <copy file="${temp.dir}/tmLanguages/grammar/${grammar.file}"
+                tofile="${temp.dir}/tmLanguages/de.agilantis.tm4e_languages/${grammar.id}/${grammar.file}"/>
+            <condition property="grammar.icon"
+                value="${grammar.id}/${grammar.id}.png"
+                else="generic_editor.png">
+                <available file="tmLanguages/icons/${grammar.id}.png"/>
+            </condition>
+            <copy todir="${temp.dir}/tmLanguages/de.agilantis.tm4e_languages/${grammar.id}">
+                <fileset dir="tmLanguages/icons" includes="${grammar.id}*.png"/>
+            </copy>
+            <replace file="${temp.dir}/tmLanguages/de.agilantis.tm4e_languages/plugin-template.xml"
+                token="&lt;/plugin>"
+                value="
+                    &lt;!-- @{href} -->
+                    &lt;extension point=&quot;org.eclipse.tm4e.registry.grammars&quot;>
+                       &lt;grammar scopeName=&quot;source.${grammar.id}&quot; path=&quot;./${grammar.id}/${grammar.file}&quot;/>
+                       &lt;scopeNameContentTypeBinding scopeName=&quot;source.${grammar.id}&quot;
+                             contentTypeId=&quot;contentType.${grammar.id}&quot;/>
+                    &lt;/extension>
+                    &lt;extension point=&quot;org.eclipse.core.contenttype.contentTypes&quot;>
+                       &lt;content-type
+                             base-type=&quot;org.eclipse.core.runtime.text&quot;
+                             file-extensions=&quot;${grammar.extensions}&quot;
+                             id=&quot;contentType.${grammar.id}&quot;
+                             name=&quot;${grammar.name}&quot;
+                             priority=&quot;low&quot;/>
+                    &lt;/extension>
+                    &lt;extension point=&quot;org.eclipse.ui.genericeditor.presentationReconcilers&quot;>
+                       &lt;presentationReconciler
+                          class=&quot;org.eclipse.tm4e.ui.text.TMPresentationReconciler&quot;
+                          contentType=&quot;contentType.${grammar.id}&quot;/>
+                    &lt;/extension>
+                    &lt;extension point=&quot;org.eclipse.ui.editors&quot;>
+                       &lt;editor
+                          name=&quot;${grammar.name} Editor&quot;
+                          icon=&quot;${grammar.icon}&quot;
+                          class=&quot;org.eclipse.ui.internal.genericeditor.ExtensionBasedTextEditor&quot;
+                          contributorClass=&quot;org.eclipse.ui.editors.text.TextEditorActionContributor&quot;
+                          id=&quot;language-editor.${grammar.id}&quot;
+                          default=&quot;true&quot;
+                          extensions=&quot;${grammar.extensions}&quot;>
+                          &lt;contentTypeBinding contentTypeId=&quot;contentType.${grammar.id}&quot;/>
+                      &lt;/editor>
+                   &lt;/extension>
+                &lt;/plugin>"/>
+            <!--
+                   &lt;extension point=&quot;org.eclipse.tm4e.ui.themes&quot;>
+                      &lt;themeContentTypeBinding
+                          contentTypeId=&quot;contentType.${grammar.id}&quot;
+                          themeId=&quot;org.eclipse.tm4e.ui.themes.Light&quot;/>
+                   &lt;/extension>
+            -->
+            <concat destfile="${temp.dir}/tmLanguages/description.txt" append="yes"
+                >, ${grammar.name} (${grammar.extensions.label})</concat>
+          <replace file="${temp.dir}/tmLanguages/description.txt"
+            token=" :, " value=" : "/>
+            <concat destfile="${temp.dir}/tmLanguages/license.txt" append="yes"
+                >&amp;#xA;- ${grammar.name} (${grammar.extensions.label}): @{href}</concat>
+        </sequential>
+    </macrodef>
+
+
+    <target name="init" description="init date and execution suffix">
+        <tstamp>
+            <format property="date" pattern="yyyy-MM-dd"/>
+            <format property="version.suffix" pattern="yyyyMMddHHmm"/>
+        </tstamp>
+        <property name="version" value="1.0.0.${version.suffix}"/>
+        <condition property="exec.extension" value=".exe" else="">
+            <os family="windows"/>
+        </condition>
+    </target>
+
+
+    <target name="build" depends="init"
+        description="builds the Eclipse application into the ${out.dir}">
+        <condition property="eclipse.available">
+            <available file="${temp.dir}/eclipse/eclipse/eclipse.ini"/>
+        </condition>
+        <sequential unless:set="eclipse.available">
+            <delete dir="${temp.dir}/eclipse"/>
+            <mkdir  dir="${temp.dir}/eclipse"/>
+            <get src="http://www.eclipse.org/downloads/download.php?file=/eclipse/downloads/drops4/R-4.7.3a-201803300640/eclipse-platform-4.7.3a-win32-x86_64.zip&amp;mirror_id=1"
+                dest="${temp.dir}/eclipse/eclipse.zip"/>
+            <unzip src="${temp.dir}/eclipse/eclipse.zip"
+                dest="${temp.dir}/eclipse"/>
+            <delete file="${temp.dir}/eclipse/eclipse.zip"/>
+        </sequential>
+        <macrodef name="to-comma-separated">
+            <attribute name="property"/>
+            <sequential>
+                <loadresource property="@{property}.comma-separated">
+                    <propertyresource name="@{property}"/>
+                    <filterchain>
+                        <tokenfilter>
+                            <filetokenizer/>
+                            <replaceregex flags="g" byline="no" replace=""
+                               pattern="^\s++|\s++$$"/>
+                            <replaceregex flags="g" byline="no"
+                               pattern="\s++"
+                               replace=","/>
+                        </tokenfilter>
+                    </filterchain>
+                </loadresource>
+            </sequential>
+        </macrodef>
+        <to-comma-separated property="repositories"/>
+        <to-comma-separated property="install.units"/>
+        <condition property="with.tmLanguages">
+            <available file="${temp.dir}/tmLanguages/update_site"/>
+        </condition>
+        <makeurl if:set="with.tmLanguages"
+                 property="tmLanguages.update.site.url"
+                 file="${temp.dir}/tmLanguages/update_site"/>
+        <condition property="and.tmLanguages" else=""
+            value=",${tmLanguages.update.site.url}">
+            <available file="${temp.dir}/tmLanguages/update_site"/>
+        </condition>
+
+        <!-- see http://help.eclipse.org/topic/org.eclipse.platform.doc.isv/guide/p2_director.html -->
+        <delete file="${temp.dir}/eclipse/eclipse/_workspace/.metadata/.log"/>
+        <delete dir="${out.dir}"/>
+        <exec executable="${temp.dir}/eclipse/eclipse/eclipsec${exec.extension}"
+            dir="${temp.dir}/eclipse/eclipse">
+            <arg line="-nosplash"/>
+            <arg line="-configuration _config"/>
+            <arg line="-data _workspace"/>
+            <arg line="-application org.eclipse.equinox.p2.director"/>
+            <arg value="-repository"/>
+            <arg value="${repositories.comma-separated}${and.tmLanguages}"/>
+            <arg value="-installIU"/>
+            <arg value="${install.units.comma-separated}"/>
+            <arg line="-tag Installation"/>
+            <arg value="-destination"/><arg value="${out.dir}/"/>
+            <arg value="-bundlepool"/><arg value="${out.dir}/"/>
+            <arg line="-profile EclipseAsEditor"/>
+            <arg line="-profileProperties org.eclipse.update.install.features=true"/>
+            <arg line="-p2.os win32 -p2.ws win32 -p2.arch x86_64"/>
+            <arg value="-roaming"/>
+        </exec>
+        <delete>
+            <fileset dir="${out.dir}/p2"
+                     includes="org.eclipse.equinox.p2.core/**,
+                               org.eclipse.equinox.p2.repository/**"/>
+        </delete>
+
+        <!-- plugin_customization.ini -->
+        <touch file="${temp.dir}/tmLanguages/extensions.txt"/>
+        <loadfile property="extensions.snippet" srcfile="${temp.dir}/tmLanguages/extensions.txt"/>
+        <property name="extensions.snippet" value=""/><!-- if file is empty -->
+        <copy file="plugin_customization.ini" todir="${out.dir}/configuration">
+            <!--
+            <filterchain>
+                <replacestring from="&lt;/info>&lt;/editors>"
+                    to="&lt;/info>${extensions.snippet}&lt;/editors>"/>
+            </filterchain>
+            -->
+        </copy>
+
+        <!-- JRE -->
+        <copy todir="${out.dir}/jre">
+            <fileset dir="${temp.dir}/openj9/jre"/>
+        </copy>
+
+        <!-- eclipse.ini -->
+        <replaceregexp file="${out.dir}/eclipse.ini"
+            byline="no"
+            match="-startup([\r\n]++)"
+            replace="-pluginCustomization\1configuration/plugin_customization.ini\1\0"/>
+        <replaceregexp file="${out.dir}/eclipse.ini"
+            byline="no"
+            match="-vmargs([\r\n]++)"
+            replace="-vm\1jre\\\\bin\\\\javaw.exe\1-vmargs\1-Xtune:virtualized\1-Xshareclasses:cacheDir=_shareclasses_cache\1-Xquickstart\1-Dosgi.instance.area.default=@user.home/Documents/Eclipse Workspace\1"/>
+
+    </target>
+
+
+    <target name="create-windows-installer" depends="init"
+        description="create Windows installer (via NSIS)">
+        <property name="nsis.version" value="3.03"/>
+        <condition property="nsis.available">
+            <available file="${temp.dir}/nsis/nsis-${nsis.version}"/>
+        </condition>
+        <sequential unless:set="nsis.available">
+            <delete dir="${temp.dir}/nsis"/>
+            <mkdir  dir="${temp.dir}/nsis"/>
+            <get src="https://downloads.sourceforge.net/project/nsis/NSIS%203/${nsis.version}/nsis-${nsis.version}.zip"
+                dest="${temp.dir}/nsis/nsis-${nsis.version}.zip"/>
+            <unzip src="${temp.dir}/nsis/nsis-${nsis.version}.zip" dest="${temp.dir}/nsis"/>
+        </sequential>
+        <length property="install.size.bytes">
+            <fileset dir="${out.dir}"/>
+        </length>
+        <script language="javascript"><![CDATA[
+            var sizeInBytes = project.getProperty('install.size.bytes');
+            project.setNewProperty('install.size.kb',
+                                   Math.round(sizeInBytes / 1024));
+        ]]></script>
+        <delete file="${app.subfolder}-${date}_setup.exe"/>
+        <exec executable="${temp.dir}/nsis/nsis-${nsis.version}/makensis${exec.extension}">
+            <arg value="/DAPPNAME=${app.name}"/>
+            <arg value="/DFOLDER_NAME=${app.subfolder}"/>
+            <arg value="/DPUBLISHER=${app.provider}"/>
+            <arg value="/DCONTEXT_MENU=${app.context-menu}"/>
+            <arg value="/DINPUT_DIR=${out.dir}"/>
+            <arg value="/DDATE=${date}"/>
+            <arg value="/DINSTALLSIZE=${install.size.kb}"/>
+            <arg line="/X&quot;SetCompressor /SOLID lzma&quot;"/>
+            <arg line="makensis.nsi"/>
+        </exec>
+    </target>
+
+
+    <target name="get-openj9-jre"
+        description="get latest 'OpenJDK 10 with Eclipse OpenJ9' nightly build">
+        <delete file="${temp.dir}/openj9/releases.html"/>
+        <mkdir dir="${temp.dir}/openj9"/>
+        <get src="https://github.com/AdoptOpenJDK/openjdk10-openj9-nightly/releases/"
+            dest="${temp.dir}/openj9/releases.html"/>
+        <loadfile property="openj9.download.url" srcfile="${temp.dir}/openj9/releases.html">
+            <filterchain>
+                <replaceregex byline="no" flags="i"
+                    pattern="^[\s\S]*?\Whref=&quot;([^&quot;]*OpenJDK10-OPENJ9_x64_Win_[0-9]*\.zip)&quot;[\s\S]++$$"
+                    replace="\1"/>
+            </filterchain>
+        </loadfile>
+        <echo level="info" message="OpenJ9 download URL: ${openj9.download.url}"/>
+        <touch file="${temp.dir}/openj9/download-url.txt"/>
+        <loadfile property="openj9.download.url.old"
+            srcfile="${temp.dir}/openj9/download-url.txt"/>
+        <condition property="openj9.available">
+            <equals arg1="${openj9.download.url}"
+                    arg2="${openj9.download.url.old}"/>
+        </condition>
+        <sequential unless:set="openj9.available">
+            <delete file="${temp.dir}/openj9/jre.zip"/>
+            <get src="http://github.com${openj9.download.url}"
+                dest="${temp.dir}/openj9/jre.zip"/>
+            <delete dir="${temp.dir}/openj9/jre"/>
+            <unzip src="${temp.dir}/openj9/jre.zip"
+                dest="${temp.dir}/openj9/jre">
+                <regexpmapper from="^[^/]++/(.*)$$" to="\1" handledirsep="yes"/>
+            </unzip>
+            <delete file="${temp.dir}/openj9/jre.zip"/>
+            <concat destfile="${temp.dir}/openj9/download-url.txt"
+                overwrite="yes">${openj9.download.url}</concat>
+        </sequential>
+    </target>
+
+
+</project>
