@@ -356,6 +356,7 @@ and with no claim as to its suitability for any purpose. -->
         <delete file="${temp.dir}/eclipse/eclipse/_workspace/.metadata/.log"/>
         <delete dir="${out.dir}"/>
         <exec executable="${temp.dir}/eclipse/eclipse/eclipsec${exec.extension}"
+        	failonerror="yes"
             dir="${temp.dir}/eclipse/eclipse">
             <arg line="-nosplash"/>
             <arg line="-configuration _config"/>
@@ -432,7 +433,8 @@ and with no claim as to its suitability for any purpose. -->
                                    Math.round(sizeInBytes / 1024));
         ]]></script>
         <delete file="${app.subfolder}-${date}_setup.exe"/>
-        <exec executable="${temp.dir}/nsis/nsis-${nsis.version}/makensis${exec.extension}">
+        <exec executable="${temp.dir}/nsis/nsis-${nsis.version}/makensis${exec.extension}"
+        	failonerror="yes">
             <arg value="/DAPPNAME=${app.name}"/>
             <arg value="/DFOLDER_NAME=${app.subfolder}"/>
             <arg value="/DPUBLISHER=${app.provider}"/>
