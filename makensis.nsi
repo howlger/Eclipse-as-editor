@@ -20,7 +20,7 @@ AddBrandingImage bottom 4
 
 ChangeUI all "${NSISDIR}\Contrib\UIs\sdbarker_tiny.exe"
 
-Icon "C:\Program Files (x86)\NSIS\Contrib\Graphics\Icons\orange-install.ico"
+Icon "${NSISDIR}\Contrib\Graphics\Icons\orange-install.ico"
 ShowInstDetails nevershow
 InstProgressFlags smooth
 
