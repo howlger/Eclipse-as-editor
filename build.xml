@@ -16,31 +16,20 @@ and with no claim as to its suitability for any purpose. -->
     <property name="embed.jre" value="yes"/>
 
     <!-- (not yet) reviewed, but may be useful, too:
-      http://marketplace.eclipse.org/content/jenkins-editor
+      Jenkins Editor - http://marketplace.eclipse.org/content/jenkins-editor
             https://dl.bintray.com/de-jcup/jenkinseditor
             de.jcup.jenkinseditor.feature.feature.group
             => unfortunately, requires JDT
-      http://marketplace.eclipse.org/content/overview-plugin-eclipse
+      Overview plugin for Eclipse - http://marketplace.eclipse.org/content/overview-plugin-eclipse
             http://cdn.rawgit.com/sandipchitale/sandipchitaleseclipseplugins/master/text.overview.updatesite
             text.overview.feature.feature.group
             => errors with Eclipse Photon
-      http://marketplace.eclipse.org/node/620873
+      MiniMap - http://marketplace.eclipse.org/node/620873
+      BlueSky - web development in Eclipse - https://marketplace.eclipse.org/content/bluesky-web-development-eclipse-ide-experimental
+            http://repository.jboss.org/nexus/content/unzip/unzip/org/eclipse/bluesky/repository/0.1.0-SNAPSHOT/repository-0.1.0-SNAPSHOT.zip-unzip
+            org.eclipse.bluesky.feature.feature.group (instead of org.eclipse.wst.web_ui.feature.feature.group)
+            => current version requires node.js to be installed
     -->
-
-    <property name="features" value="
-        http://download.eclipse.org/eclipse/updates/4.8-I-builds - org.eclipse.platform.ide # Eclipse Platform
-        http://download.eclipse.org/releases/oxygen # simultaneous release: Oxygen
-        http://download.eclipse.org/staging/photon  # simultaneous release: Photon
-        http://download.eclipse.org/releases/photon # simultaneous release: Photon preview
-        http://psnet.nu/eclipse/updates - nu.psnet.quickimage.feature.group     # image viewer
-        http://download.eclipse.org/tm4e/snapshots - org.eclipse.tm4e.ui.editor # Eclipse TM4E: generic editor with syntax higlighting via TextMate grammars
-        http://andrei.gmxhome.de/eclipse/ -  AnyEditTools.feature.group         # AnyEdit Tools: Compare with Clipboard, etc.
-        https://dl.bintray.com/de-jcup/batcheditor - de.jcup.batcheditor.feature.group
-        https://dl.bintray.com/de-jcup/basheditor - ...
-        http://javahexeditor.sourceforge.net/update
-        http://dadacoalition.org/yedit
-        https://resheim.net/p2/eclipse-timekeeper
-    "/>
 
     <!-- see https://wiki.eclipse.org/Eclipse_Project_Update_Sites -->
     <property name="repositories" value="
@@ -78,7 +67,7 @@ and with no claim as to its suitability for any purpose. -->
         net.resheim.eclipse.timekeeper.feature.group
         "/>
 
-  <!-- temp (working) and output directories -->
+    <!-- temp (working) and output directories -->
     <property name="temp.dir" location="temp"/>
     <property name="out.dir" location="out"/>
 
